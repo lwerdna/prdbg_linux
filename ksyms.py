@@ -37,7 +37,7 @@ class Symbol():
 
 class Symbols():
     def __init__(self):
-        self.addrToSym = {}
+        self.addrToSyms = {}
         self.nameToSym = {}
         self.syms = []
 
@@ -66,6 +66,8 @@ class Symbols():
         return answer
             
     def addSymbol(self, name, addr, type, renameDuplicates=0):
+        quit = 0
+
         if name in self.nameToSym:
             if renameDuplicates:
                 while name in self.nameToSym:
@@ -76,25 +78,26 @@ class Symbols():
                 Error("duplicate symbol name: %s" % str(self.nameToSym[name]))
                 return
 
-        if addr in self.addrToSym:
-            Error("duplicate symbol address: %s" % str(self.addrToSym[addr]))
-            return
-
+        #Info("added symbol %s with address 0x%X" % (name, addr))
         sym = Symbol(name, addr, type)
-        self.addrToSym[addr] = sym
+        # addresses map to array of syms (address collision allowed)
+        if addr in self.addrToSyms: self.addrToSyms[addr].append(sym)
+        else: self.addrToSyms[addr] = [sym]
+        # names map to single sym (name collision disallowed)
         self.nameToSym[name] = sym
+        #
         self.syms.append(sym)
 
         #print "Adding new symbols: %s" % str(sym)
        
-    def parseKallsymsOutput(self, lines, moduleName='kernel'):
+    def parseKallsymsOutput(self, lines):
         count = 0
        
         for l in lines.split("\n"):
             if not l:
                 break
-             
-            match = re.match("^([a-fA-F0-9]{1,16})\s+(.)\s+(.*?)\s.*$", l)
+ 
+            match = re.match(r'^([a-fA-F0-9]+)\s+(.)\s+(.*?)\s.*$', l)
             if not match:
                 print "malformed symbol line: %s" % l
                 break
@@ -107,7 +110,6 @@ class Symbols():
                 continue
 
             addr = int(addr, 16)
-            name = '%s!%s' % (moduleName, name)
 
             self.addSymbol(name, addr, type, 1)
             count += 1
@@ -146,25 +148,25 @@ class Symbols():
 
     # replace symbol names and symbol+XX to hex encoded addresses
     def symsToVals(self, text):
-        for s in re.findall(r'\w+!\w+', text):
+        for s in re.findall(r'\w+', text):
             if s in self.nameToSym:
                 text = text.replace(s, '0x%X' % self.nameToSym[s].addr)
 
         return text
 
     def getNearSymbol(self, addr, threshold=1024):
-        if addr in self.addrToSym:
-            return self.addrToSym[addr].name
+        if addr in self.addrToSyms:
+            return self.addrToSyms[addr][0].name
 
         # scan backwards for symbol (see if addr is symbol+offset)
         for a in range(addr-1, addr-threshold-1, -1):
-            if a in self.addrToSym:
-                return self.addrToSym[a].name + '+0x%02X' % (addr-a)
+            if a in self.addrToSyms:
+                return self.addrToSyms[a][0].name + '+0x%02X' % (addr-a)
 
         # scan forwards for symbol (see if addr is symbol-offset
         for a in range(addr+1, addr + threshold + 1):
-            if a in self.addrToSym:
-                return self.addrToSym[a].name + '-0x%02X' % (a - addr)
+            if a in self.addrToSyms:
+                return self.addrToSyms[a][0].name + '-0x%02X' % (a - addr)
 
 
         return None

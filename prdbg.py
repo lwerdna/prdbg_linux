@@ -9,7 +9,7 @@ import string
 import readline
 
 # alib
-sys.path.append(os.environ['PATH_CODE'] + '/alib/py')
+sys.path.append(os.environ['PATH_ALIB_PY'])
 import utils
 import bytes
 import parsing
@@ -23,6 +23,7 @@ import probe
 
 # globals
 g_probes = []
+g_symbols = ksyms.Symbols()
 
 #------------------------------------------------------------------------------
 # MISC
@@ -32,11 +33,12 @@ completer_text_options = []
 def completer(text, state):
     global completer_last_text
     global completer_text_options
+    global g_symbols
     result = None
     #print "called completer(%s, %d)" % (text, state)
     if text != completer_last_text:
         completer_last_text = text
-        syms = ksyms.search(text + '.*')
+        syms = g_symbols.search(text + '.*')
         completer_text_options = []
         for sym in syms:
             completer_text_options.append(sym.name)
@@ -48,8 +50,9 @@ def completer(text, state):
     return result
 
 def resolveToVal(text):
+    global g_symbols
     # replace any symbol names with their numerical counterparts
-    text = ksyms.symsToVals(text) 
+    text = g_symbols.symsToVals(text) 
     # calculate numerical expressions and python
     ret = eval(text)
     # done!
@@ -76,7 +79,6 @@ toolchainOpts = { \
     'objdump_flags' : ''
 }
 
-ksyms = ksyms.Symbols()
 
 nextEffectiveCmd = ''
 nextEffectiveAddr = 0
@@ -92,8 +94,6 @@ while 1:
             line = nextEffectiveCmd
         else:
             nextEffectiveCmd = line
-
-        line = ksyms.symsToVals(line)
 
         firstTok = line.split()[0]
 
@@ -230,7 +230,7 @@ while 1:
 
             if line:
                 # try to make an address out of the given arguments
-                line = ksyms.symsToVals(line)
+                line = g_symbols.symsToVals(line)
                 addr = eval(line)
             else:
                 addr = nextEffectiveAddr
@@ -238,7 +238,7 @@ while 1:
             data = mem.read(addr, length)
 
             disasm = toolchain.disasmToString(addr, data, toolchainOpts) 
-            disasm = ksyms.valsToSyms(disasm)
+            disasm = g_symbols.valsToSyms(disasm)
             output.ColorData()
             print disasm
             output.ColorPop()
@@ -255,13 +255,13 @@ while 1:
             output.Info(temp)
 
             temp = utils.runGetOutput(['adb shell su -c "cat /proc/kallsyms"'], 1)
-            ksyms.parseKallsymsOutput(temp)
+            g_symbols.parseKallsymsOutput(temp)
             continue
 
         if(line[0:2] == 'x '):
             line = parsing.consumeTokens(line, ' ', 1)
             print "Searching symbols for regex: %s" % line
-            syms = ksyms.search(line) 
+            syms = g_symbols.search(line) 
             for sym in syms:
                 print sym
             continue
@@ -269,7 +269,7 @@ while 1:
         if(line[0:3] == 'ln '):
             line = parsing.consumeTokens(line, ' ', 1)
             print "Searching symbols near: %s" % line
-            symname = ksyms.getNearSymbol(int(line, 16)) 
+            symname = g_symbols.getNearSymbol(int(line, 16)) 
             if symname:
                 print symname
             else:

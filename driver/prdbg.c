@@ -20,7 +20,9 @@
 #include <asm/uaccess.h>
 #include <asm/pgtable.h>
 #include <asm/cacheflush.h>
-//#include <asm/mmu_writeable.h> // for mem_text_write_kernel_word()
+#ifdef CONFIG_STRICT_MEMORY_RWX
+#include <asm/mmu_writeable.h> // for mem_text_write_kernel_word()
+#endif
 
 #include "prdbg.h"
 
