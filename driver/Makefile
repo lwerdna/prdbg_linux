@@ -8,7 +8,7 @@ else
 all: module
 
 module:
-	$(MAKE) -C $(KERNEL_DIR) M=`pwd`
+	KBUILD_VERBOSE=1 $(MAKE) -C $(KERNEL_DIR) M=`pwd`
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=`pwd` clean

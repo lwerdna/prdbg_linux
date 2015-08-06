@@ -12,13 +12,16 @@ COMPILE_FLAGS = --sysroot=$(NDK_SYSROOT)
 
 CC = $(CCOMPILER)gcc
 
-all: lkmauth_bypass0 symvers_from_dkmem
+all: lkmauth_bypass0 lkmauth_bypass1 symvers_from_dkmem
 
 helpers.o: helpers.c
 	$(CC) $(COMPILE_FLAGS) -c helpers.c
 
 lkmauth_bypass0: lkmauth_bypass0.c helpers.o
 	$(CC) $(COMPILE_FLAGS) lkmauth_bypass0.c helpers.o -o lkmauth_bypass0
+
+lkmauth_bypass1: lkmauth_bypass1.c helpers.o
+	$(CC) $(COMPILE_FLAGS) lkmauth_bypass1.c helpers.o -o lkmauth_bypass1
 
 symvers_from_dkmem: symvers_from_dkmem.c helpers.o
 	$(CC) $(COMPILE_FLAGS) symvers_from_dkmem.c helpers.o -o symvers_from_dkmem

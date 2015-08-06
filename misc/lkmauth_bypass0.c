@@ -1,4 +1,4 @@
-/* patch out the KNOX/TIMA/LKMAUTH check on insmod for an
+/* patch out the Samsung KNOX/TIMA/LKMAUTH check on insmod for an
     ATT Galaxy S3 (SG-I747) with 4.4.2 
 
  (this may work on other devices)
@@ -74,7 +74,7 @@ main(int ac, char **av)
     if(kmem_read(addr, buf, WINDOW)) { printf("ERROR: kmem_read()\n"); goto cleanup; }
     printf("read %d (0x%X) bytes\n", WINDOW, WINDOW);
     
-    printf("scanning for check()\n");
+    printf("scanning for check\n");
     for(i=0; i<(WINDOW-12); i += 4) {
         //lkmauth+0x17C: e5981144     ldr    r1, [r8, #324]
         //lkmauth+0x180: e3510000     cmp    r1, #0    ; 0x0

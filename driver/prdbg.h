@@ -22,7 +22,7 @@ struct cmd_header
 #define CMD_MEM_WRITE           1
 
 /* memory write with considerations for overwriting live code
-    (flush instructin cache, etc.) */
+    (flush instruction cache, etc.) */
 #define CMD_MEM_WRITE_CODE      2
 
 /* allocate/free */
