@@ -1,7 +1,13 @@
-# PRDBG Driver
-This readme will focus mainly on getting this code to compile and run for your device.
+This readme will detail how to compile the prdbg driver for your OS.
 
-# Start
+# for Ubuntu 14.04
+Let's get the easy case over with first. There's a lot of support online that I don't want to repeat here. You should only have to run `uname -r` and make sure your kernel headers are in /usr/src/. From the driver directory, compile in one step with:
+
+```
+KERNEL_DIR=/usr/src/linux-headers-3.16.0-30-generic/ make
+```
+
+# for Android
 Here are my recommended steps. Adjustments are often required.
 1. find and download the kernel source for the Android OS you're targetting
   - cat /proc/version should yield useful

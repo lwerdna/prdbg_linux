@@ -17,9 +17,11 @@ import toolchain
 import output
 
 # ours
-import mem
 import ksyms
-import probe
+import config
+mem = config.mem
+probe = config.probe
+toolchainOpts = config.toolchainOpts
 
 # globals
 g_probes = []
@@ -68,18 +70,6 @@ delims = readline.get_completer_delims()
 # remove '!' from deliminators so can tab complete eg: kernel!sys
 readline.set_completer_delims(string.replace(readline.get_completer_delims(), '!', ''))
 
-# toolchain lib disasm settings
-CROSS_COMPILE = os.environ['HOME'] + '/arm-eabi-4.4.3/bin/arm-eabi-'
-toolchainOpts = { \
-               'as' : CROSS_COMPILE + 'as',
-         'as_flags' : '',
-               'ld' : CROSS_COMPILE + 'ld',
-         'ld_flags' : '',
-          'objdump' : CROSS_COMPILE + 'objdump',
-    'objdump_flags' : ''
-}
-
-
 nextEffectiveCmd = ''
 nextEffectiveAddr = 0
 
@@ -102,42 +92,11 @@ while 1:
             print "quiting..."
             break
 
-        if line=='install' or line=='uninstall':
-            # rmmod the driver in both cases 
-            tmp = utils.runGetOutput(['adb shell lsmod'], 1)
-            output.Info(tmp)
-            if re.search('prdbg', tmp):
-                tmp = utils.runGetOutput(['adb shell su -c "rmmod prdbg"'], 1)
-                output.Info(tmp)
-                 
-            if line=='install':
-                # unhide addresses when reading /proc/kallsyms
-                tmp = utils.runGetOutput(['adb shell su -c "echo 0 > /proc/sys/kernel/kptr_restrict"'], 1)
-                output.Info(tmp)
+        if line=='install':
+            config.install()
 
-                # copy the gofer
-                tmp = utils.runGetOutput(['adb push ./gofer/gofer /data/local/tmp'], 1)
-                output.Info(tmp)
-
-                # copy the driver
-                tmp = utils.runGetOutput(['adb push ./driver/prdbg.ko /data/local/tmp'], 1)
-                output.Info(tmp)
-
-                # insmod the driver
-                tmp = utils.runGetOutput(['adb shell su -c "insmod /data/local/tmp/prdbg.ko"'], 1)
-                output.Info(tmp)
-
-                # create the character device if it doesn't exist
-                tmp = utils.runGetOutput(['adb shell ls /dev/prdbg'], 1)
-                output.Info(tmp)
-                if re.search('No such file or directory', tmp):
-                    tmp = utils.runGetOutput(['adb shell su -c "/data/local/tmp/busybox mknod /dev/prdbg c 500 1"'], 1)
-                    output.Info(tmp)
-        
-                    tmp = utils.runGetOutput(['adb shell su -c "chmod 666 /dev/prdbg"'], 1)
-                    output.Info(tmp)
-
-            continue
+        if line == 'uninstall':
+            config.uninstall()
 
         # evaluate
         match = re.match(r'^\? (.*)$', line)
