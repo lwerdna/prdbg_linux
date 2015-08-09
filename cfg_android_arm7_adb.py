@@ -74,3 +74,10 @@ def uninstall():
         tmp = utils.runGetOutput(['adb shell su -c "rmmod prdbg"'], 1)
         output.Info(tmp)
 
+def getKAllSyms():
+    temp = utils.runGetOutput(['adb shell su -c "echo 0 > /proc/sys/kernel/kptr_restrict"'], 1)
+    output.Info(temp)
+
+    temp = utils.runGetOutput(['adb shell su -c "cat /proc/kallsyms"'], 1)
+    return temp
+

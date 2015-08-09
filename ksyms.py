@@ -97,7 +97,7 @@ class Symbols():
             if not l:
                 break
  
-            match = re.match(r'^([a-fA-F0-9]+)\s+(.)\s+(.*?)\s.*$', l)
+            match = re.match(r'^([a-fA-F0-9]+)\s+(.)\s+(.*?)\s*$', l)
             if not match:
                 print "malformed symbol line: %s" % l
                 break

@@ -210,10 +210,7 @@ while 1:
         # symbol handling stuff
         #----------------------------------------------------------------------
         if(line == 'kallsyms' or line == 'kas'):
-            temp = utils.runGetOutput(['adb shell su -c "echo 0 > /proc/sys/kernel/kptr_restrict"'], 1)
-            output.Info(temp)
-
-            temp = utils.runGetOutput(['adb shell su -c "cat /proc/kallsyms"'], 1)
+            temp = config.getKAllSyms()            
             g_symbols.parseKallsymsOutput(temp)
             continue
 

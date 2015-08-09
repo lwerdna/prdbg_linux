@@ -2,12 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h> /* open */
+#include <stdint.h> /* uint32_t, etc. */
+#include <inttypes.h> /* PRIxPTR, etc. */
+
 #include <unistd.h>
 #include <sys/stat.h>
 #include <linux/fs.h>
 
 #include "../driver/prdbg.h"
 
+/* from alib */
 #include "parsing.h"
 #include "output.h"
 
@@ -47,7 +51,7 @@ talk_driver(struct cmd_header *hdr)
 }
 
 void 
-mem_read(unsigned long addr, unsigned long bytes_n)
+mem_read(uintptr_t addr, unsigned long bytes_n)
 {
     struct cmd_mem_generic cmd;
 
@@ -67,7 +71,7 @@ mem_read(unsigned long addr, unsigned long bytes_n)
 }
 
 void 
-mem_write(unsigned long addr, unsigned char *buff, unsigned long bytes_n)
+mem_write(uintptr_t addr, unsigned char *buff, unsigned long bytes_n)
 {
     struct cmd_mem_generic cmd = {
         .hdr.cmd_id = CMD_MEM_WRITE,
@@ -82,7 +86,7 @@ mem_write(unsigned long addr, unsigned char *buff, unsigned long bytes_n)
 }
 
 void 
-mem_write_code(unsigned long addr, unsigned char *buff, unsigned long bytes_n)
+mem_write_code(uintptr_t addr, unsigned char *buff, unsigned long bytes_n)
 {
     struct cmd_mem_generic cmd = {
         .hdr.cmd_id = CMD_MEM_WRITE_CODE,
@@ -97,7 +101,7 @@ mem_write_code(unsigned long addr, unsigned char *buff, unsigned long bytes_n)
 }
 
 void 
-vmalloc(unsigned int bytes_n)
+vmalloc(uint32_t bytes_n)
 {
     struct cmd_mem_generic cmd = {
         .hdr.cmd_id = CMD_VMALLOC,
@@ -112,7 +116,7 @@ vmalloc(unsigned int bytes_n)
 }
 
 void 
-vfree(unsigned long addr)
+vfree(uintptr_t addr)
 {
     struct cmd_mem_generic cmd = {
         .hdr.cmd_id = CMD_VFREE,
@@ -125,7 +129,7 @@ vfree(unsigned long addr)
 }
 
 void 
-call(unsigned long addr, unsigned long arg)
+call(uintptr_t addr, unsigned long arg)
 {
     struct cmd_execute_mem cmd = {
         .hdr.cmd_id = CMD_CALL,
@@ -139,15 +143,15 @@ call(unsigned long addr, unsigned long arg)
 }
 
 int 
-kmem_generic(int b_read, unsigned long offset, void *buf, unsigned int count)
+kmem_generic(int b_read, uintptr_t addr, void *buf, unsigned int count)
 {
 	int rc = -1;
     FILE *fp = NULL;
 
     if(b_read)
-        printf("reading %d bytes from 0x%X\n", count, offset);
+        printf("reading %d bytes from %" PRIxPTR "\n", count, addr);
     else
-        printf("writing %d bytes to 0x%X\n", count, offset);
+        printf("writing %d bytes to %" PRIxPTR "\n", count, addr);
     
     fp = fopen("/dev/kmem", "rb+");
     if(!fp) {
@@ -155,8 +159,8 @@ kmem_generic(int b_read, unsigned long offset, void *buf, unsigned int count)
         goto cleanup;
     }
 
-	/* Seek to offset */
-	if(fseek(fp, offset, SEEK_SET)) {
+	/* seek to addr */
+	if(fseek(fp, addr, SEEK_SET)) {
 		printf("ERROR: fseek()\n");
         goto cleanup;
     }
@@ -218,9 +222,9 @@ main(int ac, char **av)
     int cmd_arg0 = -1;
     int cmd_arg1 = -1;
 
-    unsigned long addr;
-    unsigned long length;
-    unsigned int tmp_uint;
+    uintptr_t addr;
+    unsigned int length;
+    unsigned int tmp_uint32;
 
     unsigned char buff[256];
 
@@ -266,7 +270,7 @@ main(int ac, char **av)
         }
 
         memset(buff, '\xFA', sizeof(buff));
-        printf("addr: %08X\n", addr);
+        printf("addr: %" PRIxPTR "\n", addr);
         printf("length: %08X\n", length);
         rc = kmem_read(addr, buff, length);
 
@@ -293,13 +297,13 @@ main(int ac, char **av)
     /* memory allocation */
     /*************************************************************************/
     else if(!strcmp(av[1], "VMALLOC")) {
-        if(!parse_uint(av[2], &tmp_uint)) {
-            vmalloc(tmp_uint);
+        if(!parse_uint32_hex(av[2], &tmp_uint32)) {
+            vmalloc(tmp_uint32);
         }
     }
     else if(!strcmp(av[1], "VFREE")) {
-        if(!parse_addr(av[2], &addr)) {
-            printf("vfree(0x%08X)\n", addr);
+        if(!parse_uintptr_hex(av[2], &addr)) {
+            printf("vfree(%" PRIxPTR ")\n", addr);
             vfree(addr);
         }
     }
@@ -307,9 +311,9 @@ main(int ac, char **av)
     /* memory execution */ 
     /*************************************************************************/
     else if(!strcmp(av[1], "CALL")) {
-        if(!parse_addr(av[2], &addr)) {
+        if(!parse_uintptr_hex(av[2], &addr)) {
             unsigned long arg;
-            if(!parse_addr(av[3], &arg)) {
+            if(!parse_uintptr_hex(av[3], &arg)) {
                 call(addr, arg);
             }
         }
@@ -319,7 +323,7 @@ main(int ac, char **av)
     /* else */
     /*************************************************************************/
 
-    else if(!strcmp(av[1], "CALLTEST")) {
+    else if(!strcmp(av[1], "CALLTEST") || !strcmp(av[1], "TEST")) {
         generic_empty_command(CMD_CALL_TEST);
     }
     

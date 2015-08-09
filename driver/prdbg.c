@@ -48,28 +48,28 @@ prdbg_test(void)
 
 /* callback - process open file */
 static int 
-chrdev_open(struct inode *inode, struct file *file)
+prdbg_chrdev_open(struct inode *inode, struct file *file)
 {
-    //printk("%s()\n", __func__);
+    printk("%s()\n", __func__);
     return 0;
 }
 
 /* callback - process closes file */
 static int 
-chrdev_release(struct inode *inode, struct file *file)
+prdbg_chrdev_release(struct inode *inode, struct file *file)
 {
-    //printk("%s()\n", __func__);
+    printk("%s()\n", __func__);
     return 0;
 }
 
 /* callback - process reads file */
 static ssize_t 
-chrdev_read(struct file *file, char __user *buffer,
+prdbg_chrdev_read(struct file *file, char __user *buffer,
     size_t length, loff_t *offset)
 {
     ssize_t rc = -EINVAL;
 
-    //printk("%s()\n", __func__);
+    printk("%s()\n", __func__);
 
     if(!cmd_hdr) {
         printk("missing command\n");
@@ -182,7 +182,7 @@ chrdev_read(struct file *file, char __user *buffer,
             struct cmd_execute_mem *cmd =
                 (struct cmd_execute_mem *)cmd_hdr;
 
-            printk("\"Call\"ing buffer %p(%p)\n", cmd->addr, cmd->arg);
+            printk("\"call\"ing buffer %p(%p)\n", cmd->addr, cmd->arg);
 
             pfunc = cmd->addr;
 
@@ -222,13 +222,12 @@ chrdev_read(struct file *file, char __user *buffer,
 }
 
 static ssize_t 
-chrdev_write(struct file *filp, const char *buff, size_t len, 
+prdbg_chrdev_write(struct file *filp, const char *buff, size_t len, 
     loff_t * off)
 {
     ssize_t rc = -EINVAL;
-    struct cmd_header *tmp_hdr;
 
-    //printk("%s()\n", __func__);
+    printk("%s()\n", __func__);
 
     /* free previous command, if present */
     if(cmd_hdr) {
@@ -236,17 +235,8 @@ chrdev_write(struct file *filp, const char *buff, size_t len,
         cmd_hdr = 0;
     }
 
-    /* check claimed size */
-    tmp_hdr = (struct cmd_header *)buff;
-    if(len != tmp_hdr->len) {
-        printk("linux claims incoming struct size 0x%X "
-                "struct claims its size is 0x%X\n", (unsigned int)len, 
-                (unsigned int)tmp_hdr->len);
-        goto cleanup;
-    } 
-
     /* allocate space for it */
-    //printk("allocating 0x%X bytes\n", (unsigned int)len);
+    printk("allocating %zu bytes\n", len);
     cmd_hdr = (struct cmd_header *)kmalloc(len, GFP_USER);
     if(!cmd_hdr) {
         printk("error kmalloc()\n");
@@ -254,7 +244,7 @@ chrdev_write(struct file *filp, const char *buff, size_t len,
     }
 
     /* copy it */
-    memcpy(cmd_hdr, buff, len);
+    copy_from_user(cmd_hdr, buff, len);
 
     /* done */
     rc = len;
@@ -262,11 +252,11 @@ chrdev_write(struct file *filp, const char *buff, size_t len,
     return rc;
 }
 
-struct file_operations chrdev_ops = {
-    .read = chrdev_read,
-    .write = chrdev_write,
-    .open = chrdev_open,
-    .release = chrdev_release,
+struct file_operations prdbg_chrdev_ops = {
+    .read = prdbg_chrdev_read,
+    .write = prdbg_chrdev_write,
+    .open = prdbg_chrdev_open,
+    .release = prdbg_chrdev_release,
 };
 
 //-----------------------------------------------------------------------------
@@ -280,7 +270,7 @@ prdbg_init(void)
     
     printk("%s()\n", __func__);
 
-    rc = register_chrdev(DEVICE_NUM_MAJOR, DEVICE_FILE_PATH, &chrdev_ops);
+    rc = register_chrdev(DEVICE_NUM_MAJOR, DEVICE_FILE_PATH, &prdbg_chrdev_ops);
 
     if(rc < 0) {
         printk("ERROR: register_chrdev()\n");
