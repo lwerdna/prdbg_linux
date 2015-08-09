@@ -60,6 +60,9 @@ def resolveToVal(text):
     # done!
     return ret
 
+def evalReMatchGroup1(match):
+    return '%X' % eval(match.group(0))
+
 #------------------------------------------------------------------------------
 # MAIN
 #------------------------------------------------------------------------------
@@ -76,7 +79,8 @@ nextEffectiveAddr = 0
 # user i/o loop
 while 1:
     try:
-        show_context = 0
+        # default values for memory params
+        (addr, length) = (nextEffectiveAddr, 128)
     
         line = raw_input('prdbg> ')
    
@@ -85,115 +89,91 @@ while 1:
         else:
             nextEffectiveCmd = line
 
-        firstTok = line.split()[0]
-
+        # pre parsing
+        (cmd, delim, params) = line.partition(' ')
+        print "params raw: %s" % params
+        params = g_symbols.symsToVals(params) 
+        print "params after symsToVals: %s" % params
+        params = re.sub(r'[xa-fA-F0-9\+\-\*\/\s]+', evalReMatchGroup1, params)
+        print "params after eval: %s" % params
         # start/stop junk
-        if(line == "q"):
-            print "quiting..."
+        if(cmd == "q"):
             break
 
-        if line=='install':
+        if cmd == 'install':
             config.install()
 
-        if line == 'uninstall':
+        if cmd == 'uninstall':
             config.uninstall()
 
         # evaluate
-        match = re.match(r'^\? (.*)$', line)
-        if match:
-            val = resolveToVal(match.group(1)) 
-            print '0x%X' % val
-
-            continue
+        if cmd == '?':
+            print '0x%X' % resolveToVal(params)
 
         #----------------------------------------------------------------------
         # mem dumping 
         #----------------------------------------------------------------------
-        if firstTok in ['db','dw','dd','dq','db ','dw ','dd ','dq ']:
+        if cmd in ['db','dw','dd','dq']:
             # save grouping (byte, word, dword, qword)
-            grouping = {'b':1, 'w':2, 'd':4, 'q':8}[line[1]]
-
-            # get rid of the command
-            line = parsing.consumeTokens(line, ' ', 1)
+            grouping = {'b':1, 'w':2, 'd':4, 'q':8}[cmd[1]]
 
             # get address, length
-            if line:
-                [addr, length] = parsing.parseAddressRange(line, 128)
-            else:
-                length = 128
-                addr = nextEffectiveAddr
+            if params:
+                [addr, length] = parsing.parseAddressRange(params, 128)
 
             # read, print bytes
             data = mem.read(addr, length)
             print repr(data)
             temp = bytes.getHexDump(data, addr, grouping); 
+            temp = g_symbols.valsToSyms(temp)
             output.ColorData()
             print temp
             output.ColorPop()
             
             nextEffectiveAddr = addr + length
-            
-            continue
 
-        if firstTok in ['dbida', 'dbgdb', 'dbc', 'dbpython']:
-            # get rid of the command
-            line = parsing.consumeTokens(line, ' ', 1)
-
+        if cmd in ['dbida', 'dbgdb', 'dbc', 'dbpython']:
             # get address, length
-            if line:
-                [addr, length] = parsing.parseAddressRange(line, 128)
-            else:
-                length = 128
-                addr = nextEffectiveAddr
+            if params:
+                [addr, length] = parsing.parseAddressRange(params, 128)
 
             # read, print bytes
             data = mem.read(addr, length)
 
-            if firstTok == 'dbida':
+            if cmd == 'dbida':
                 print bytes.getIdaPatchIdc(addr, data)
-            elif firstTok == 'dbgdb':
+            elif cmd == 'dbgdb':
                 print bytes.getGdbWrites(addr, data)
-            elif firstTok == 'dbc':
+            elif cmd == 'dbc':
                 print bytes.getCString(data)
-            elif firstTok == 'dbpython':
+            elif cmd == 'dbpython':
                 print bytes.getPythonString(data)
             
             nextEffectiveAddr = addr + length
-            
-            continue
 
         #----------------------------------------------------------------------
         # mem writing 
         #----------------------------------------------------------------------
-        if firstTok == 'eb':
+        if cmd == 'eb':
             addr = 0
 
-            # get rid of the command
-            line = parsing.consumeToken(line)
             # get the address
-            addr = parsing.parseHexValue(line)
-            line = parsing.consumeToken(line)
+            addr = parsing.parseHexValue(params)
+            params = parsing.consumeToken(params)
             # get the bytes
-            data = parsing.parseBytes(line)
+            data = parsing.parseBytes(params)
 
             # read, print bytes
             mem.writeCode(addr, data)
             print "writing 0x%X bytes to 0x%X: %s" % (len(data), addr, repr(data))
             
-            continue
-
-        # disassemble
-        if line[0:2] in ['u','u ']:
-            line = parsing.consumeTokens(line, ' ', 1)
+        #----------------------------------------------------------------------
+        # disassembling
+        #----------------------------------------------------------------------
+        if cmd == 'u':
             length = 128
 
-            if line:
-                # try to make an address out of the given arguments
-                line = g_symbols.symsToVals(line)
-                addr = eval(line)
-            else:
-                addr = nextEffectiveAddr
-
+            addr = int(params, 16)
             data = mem.read(addr, length)
 
             disasm = toolchain.disasmToString(addr, data, toolchainOpts) 
@@ -204,58 +184,70 @@ while 1:
 
             nextEffectiveAddr = addr + length 
 
-            continue
-
         #----------------------------------------------------------------------
         # symbol handling stuff
         #----------------------------------------------------------------------
-        if(line == 'kallsyms' or line == 'kas'):
+        if cmd == 'kallsyms' or cmd == 'kas':
             temp = config.getKAllSyms()            
             g_symbols.parseKallsymsOutput(temp)
-            continue
 
-        if(line[0:2] == 'x '):
-            line = parsing.consumeTokens(line, ' ', 1)
-            print "Searching symbols for regex: %s" % line
-            syms = g_symbols.search(line) 
+        if cmd == 'x':
+            print "Searching symbols for regex: %s" % params
+            syms = g_symbols.search(params) 
             for sym in syms:
                 print sym
-            continue
 
-        if(line[0:3] == 'ln '):
-            line = parsing.consumeTokens(line, ' ', 1)
-            print "Searching symbols near: %s" % line
-            symname = g_symbols.getNearSymbol(int(line, 16)) 
+        if cmd == 'ln':
+            print "Searching symbols near: %s" % params
+            symname = g_symbols.getNearSymbol(int(params, 16)) 
             if symname:
                 print symname
             else:
                 print "No nearby symbols!"
 
-            continue
+        if cmd in ['dds', 'ddq']:
+            if params:
+                [addr, length] = parsing.parseAddressRange(params, 128)
+
+            data = mem.read(addr, length)
+            print repr(data)
+
+            while data:
+                value = None
+                if cmd == 'dds':
+                    if len(data) < 4: break;
+                    value = struct.unpack('<I', data[0:4])[0]
+                    data = data[4:]
+                    addr += 4    
+                if cmd == 'ddq':
+                    if len(data) < 8: break;
+                    value = struct.unpack('<Q', data[0:8])[0]
+                    data = data[8:]
+                    addr += 8    
+ 
+                print "%x: %s" % (addr, g_symbols.valsToSyms('%X' % value))
 
         #----------------------------------------------------------------------
         # probing
         #----------------------------------------------------------------------
-        if(line[0:5] == 'padd '):
-            line = parsing.consumeTokens(line, ' ', 1)
-            p = probe.Probe(int(line, 16))
+        if cmd == 'padd':
+            p = probe.Probe(int(params, 16))
             p.install()
             g_probes.append(p)
 
-        if(line[0:5] == 'pdel '):
-            line = parsing.consumeTokens(line, ' ', 1)
+        if cmd == 'pdel':
             for (i,p) in enumerate(g_probes):
-                if p.addrHook == int(line, 16):
+                if p.addrHook == int(params, 16):
                     del(g_probes[i])
                     break
                    
-        if(line == 'pdelall'):
+        if cmd == 'pdelall':
             for (i,p) in enumerate(g_probes):
                 p.uninstall()
                 
             g_probes = []
 
-        if(line == 'plist'):
+        if cmd == 'plist':
             for p in g_probes:
                 print p
 
