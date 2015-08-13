@@ -61,7 +61,12 @@ def resolveToVal(text):
     return ret
 
 def evalReMatchGroup1(match):
-    return '%X' % eval(match.group(0))
+    print "my match to eval is: -%s-" % match.group(0)
+    try:
+        return '%X' % eval(match.group(0))
+    except Exception:
+        # any problem evaluating? give up
+        return match.group(0)
 
 #------------------------------------------------------------------------------
 # MAIN
@@ -91,6 +96,7 @@ while 1:
 
         # pre parsing
         (cmd, delim, params) = line.partition(' ')
+        paramsRaw = params
         print "params raw: %s" % params
         params = g_symbols.symsToVals(params) 
         print "params after symsToVals: %s" % params
@@ -192,8 +198,8 @@ while 1:
             g_symbols.parseKallsymsOutput(temp)
 
         if cmd == 'x':
-            print "Searching symbols for regex: %s" % params
-            syms = g_symbols.search(params) 
+            print "Searching symbols for regex: %s" % paramsRaw
+            syms = g_symbols.search(paramsRaw) 
             for sym in syms:
                 print sym
 
@@ -225,7 +231,10 @@ while 1:
                     data = data[8:]
                     addr += 8    
  
-                print "%x: %s" % (addr, g_symbols.valsToSyms('%X' % value))
+                print "%s: %s" % \
+                    (g_symbols.valsToSyms('%X' % addr), g_symbols.valsToSyms('%X' % value))
+
+            nextEffectiveAddr = addr + length
 
         #----------------------------------------------------------------------
         # probing

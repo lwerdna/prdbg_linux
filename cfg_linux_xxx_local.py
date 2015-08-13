@@ -26,7 +26,7 @@ toolchainOpts = { \
                'ld' : 'ld',
          'ld_flags' : '',
           'objdump' : 'objdump',
-    'objdump_flags' : ''
+    'objdump_flags' : '--disassembler-options=intel'
 }
 
 def install():
@@ -37,11 +37,9 @@ def install():
         output.Info(tmp)
          
     # unhide addresses when reading /proc/kallsyms
-    # gotta do fancy shit here that I don't understand yet, like:
-    # sudo sh -c " echo 0 > /proc/sys/kernel/kptr_restrict"
-    # echo 0 | sudo tee /proc/sys/kernel/kptr_restrict 
-    #tmp = utils.runGetOutput(['su -c "echo 0 > /proc/sys/kernel/kptr_restrict"'], 1)
-    #output.Info(tmp)
+    # gotta do fancy shit here that I don't understand yet
+    tmp = utils.runGetOutput(['echo 0 | sudo tee /proc/sys/kernel/kptr_restrict'], 1)
+    output.Info(tmp)
 
     # copy the gofer
     tmp = utils.runGetOutput(['cp ./gofer/gofer /tmp'], 1)

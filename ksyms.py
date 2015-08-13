@@ -73,7 +73,7 @@ class Symbols():
                 while name in self.nameToSym:
                     name_old = name
                     name = self.incrSymName(name_old)
-                Warn("renamed duplicate %s to %s" % (name_old, name))
+                #Warn("renamed duplicate %s to %s" % (name_old, name))
             else:                
                 Error("duplicate symbol name: %s" % str(self.nameToSym[name]))
                 return
@@ -96,13 +96,19 @@ class Symbols():
         for l in lines.split("\n"):
             if not l:
                 break
- 
-            match = re.match(r'^([a-fA-F0-9]+)\s+(.)\s+(.*?)\s*$', l)
+
+            # eg:  ffffffffc0129680 t hidinput_getkeycode	[hid]
+            #      ffffffffc02fa2a8 r .LC6	[vmwgfx]
+            match = re.match(r'^([a-fA-F0-9]+)\s+(.)\s+([\.\w]+).*$', l)
             if not match:
                 print "malformed symbol line: %s" % l
                 break
 
-            (addr, type, name) = (match.group(1), match.group(2), match.group(3))
+            (addr, type, name) = match.group(1,2,3)
+
+            # interested in text (code) syms for now
+            if type not in 'tT':
+                continue
 
             # filter out mapping symbols from lkm's like '$a' and '$d' 
             if name[0] == '$':
@@ -111,8 +117,11 @@ class Symbols():
 
             addr = int(addr, 16)
 
-            self.addSymbol(name, addr, type, 1)
+            self.addSymbol(name, addr, type, 0)
             count += 1
+
+            if (count % 1000) == 0:
+                print "loaded %d symbols..." % count
 
         print "Loaded %d symbols" % count
 

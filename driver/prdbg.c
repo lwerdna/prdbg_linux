@@ -34,6 +34,45 @@
 struct cmd_header *cmd_hdr = 0;
 
 //-----------------------------------------------------------------------------
+// WRITE PROTECT ENABLE/DISABLE
+//-----------------------------------------------------------------------------
+void 
+disable_write_protect(void)
+{
+    #ifdef __i386__
+    uint32_t cr0_value;
+    asm volatile ("movl %%cr0, %0" : "=r" (cr0_value));
+    cr0_value &= ~(1 << 16);
+    asm volatile ("movl %0, %%cr0" :: "r" (cr0_value));
+    #endif
+
+    #ifdef __amd64__
+    uint64_t cr0_value;
+    asm volatile ("movq %%cr0, %0" : "=r" (cr0_value));
+    cr0_value &= ~(1 << 16);
+    asm volatile ("movq %0, %%cr0" :: "r" (cr0_value));
+    #endif
+}
+        
+void 
+enable_write_protect(void)
+{
+    #ifdef __i386__
+    uint32_t cr0_value;
+    asm volatile ("movl %%cr0, %0" : "=r" (cr0_value));
+    cr0_value |= (1 << 16);
+    asm volatile ("movl %0, %%cr0" :: "r" (cr0_value));
+    #endif
+
+    #ifdef __amd64__
+    uint64_t cr0_value;
+    asm volatile ("movq %%cr0, %0" : "=r" (cr0_value));
+    cr0_value |= (1 << 16);
+    asm volatile ("movq %0, %%cr0" :: "r" (cr0_value));
+    #endif
+}
+
+//-----------------------------------------------------------------------------
 // TEST STUFF
 //-----------------------------------------------------------------------------
 void
@@ -113,6 +152,10 @@ prdbg_chrdev_read(struct file *file, char __user *buffer,
             unsigned long *pAddr, *pData;
             #endif
 
+            printk("Writing 0x%X bytes to virtual address %p\n", 
+                cmd_mem->bytes_n, cmd_mem->addr); 
+
+            #ifdef CONFIG_STRICT_MEMORY_RWX
             if(cmd_mem->bytes_n % 4) {
                 printk("ERROR: when writing code, byte amount (0x%X) must be "
                     "multiple of 4!\n", cmd_mem->bytes_n);
@@ -120,10 +163,6 @@ prdbg_chrdev_read(struct file *file, char __user *buffer,
                 goto cleanup;
             }
 
-            printk("Writing 0x%X bytes to virtual address %p\n", 
-                cmd_mem->bytes_n, cmd_mem->addr); 
-
-            #ifdef CONFIG_STRICT_MEMORY_RWX
             pAddr = cmd_mem->addr;
             pData = (void *) cmd_mem->bytes;
             for(i=0; i<(cmd_mem->bytes_n)/4; i++) {
@@ -131,7 +170,11 @@ prdbg_chrdev_read(struct file *file, char __user *buffer,
                 mem_text_write_kernel_word(pAddr + i, pData[i]);
             }
             #else
+
+            disable_write_protect();
             memcpy(cmd_mem->addr, cmd_mem->bytes, cmd_mem->bytes_n);
+            enable_write_protect();
+
             flush_icache_range((unsigned long)cmd_mem->addr,
                 (unsigned long)cmd_mem->addr + cmd_mem->bytes_n);
             #endif
@@ -150,7 +193,7 @@ prdbg_chrdev_read(struct file *file, char __user *buffer,
 
             /* vmalloc() calls __vmalloc() with some default flags...
                 we skip right to the source */
-            printk("__vmalloc(0x%X, 0x%X, 0x%X)\n", size, GFP_KERNEL, PAGE_KERNEL_EXEC);
+            //printk("__vmalloc(0x%X, 0x%X, 0x%X)\n", size, GFP_KERNEL, PAGE_KERNEL_EXEC);
             addr = __vmalloc(size, GFP_KERNEL, PAGE_KERNEL_EXEC);
             if(!addr) {
                 printk("ERROR: __vmalloc()\n");
