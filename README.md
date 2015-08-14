@@ -1,18 +1,25 @@
-This is a tool to muck with live Linux and Android kernels on x86-64 and ARM. You can read/write memory, view disassembly and symbol information conveniently, and set probe locations that report on the processor state after execution reaches them.
+This is a tool to muck with live linux/x86, linux/amd64, and android/arm kernels.
+You can read/write memory, view disassembly and symbol information conveniently, and set probe locations that report on the processor state after execution reaches them.
 
 ![screenshot](misc/screenshot.png?raw=true "screenshot")
 
-The interface is a command environment is python. The heavy lifting is done by a kernel module which resides on the device under test.
+## Terms
+- **controller** - the device running the prdbg CLI (just python!)
+- **target** - the device being mucked with
 
+## Setup Steps
 Here's what you have to do to set it up:
 1. prdbg relies on my alib repo, so clone it and set an environment variable to point at its path, eg: `export PATH_ALIB_PY=$HOME/Downloads/alib/py`
-2. compile the driver and gofer for the OS/arch on your target
+2. compile the driver and gofer for the OS/arch of your target
 3. copy the gofer and driver to the target, insert the driver
 4. select the config that describes your setup (see below) and symlink config.py to that config
 5. if the target machine is a different architecture than your controller machine, set an environment variable to a cross compiler, eg: `export CCOMPILER=$HOME/arm-eabi-4.4.3/bin/arm-eabi-`
 5. ./prdbg.py
 
-In Linux, the setup is local, meaning that device under test is also the controlling machine. A networked version over something simple like telnet is planned.
+## Setup Picture
+The interface is a command line environment is python. The heavy lifting is done by a kernel module which resides on the target. 
+
+In Linux, the setup is local, meaning that target is also the controlling machine. A networked version over something simple like telnet is planned.
 
                                            +----------+
                                            |kernel    |
@@ -25,7 +32,7 @@ In Linux, the setup is local, meaning that device under test is also the control
 
 With an Android device connected with a ADB (over USB or networked), the setup looks like this:
 
-     DEVELOPMENT MACHINE | DEVICE UNDER TEST           +----------+
+              CONTROLLER | TARGET                      +----------+
                          |                             |kernel    |
                          |                             |          |
     +------+     +---+   |   +-----+     +------+      +------+   |
