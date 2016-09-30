@@ -11,9 +11,9 @@
 
 #include "../driver/prdbg.h"
 
-/* from alib */
-#include "parsing.h"
-#include "output.h"
+/* from autils */
+#include <autils/parsing.h>
+#include <autils/output.h>
 
 int 
 talk_driver(struct cmd_header *hdr)
@@ -175,10 +175,10 @@ kmem_generic(int b_read, uintptr_t addr, void *buf, unsigned int count)
         printf("buf[0] is: 0x%02X\n", (*(unsigned char *)buf) & 0xFF);
     }
     else {
-    	if(fwrite(buf, 1, count, fp) != count) {
-    		printf("ERROR: fwrite()\n");
-            goto cleanup;
-        }
+    	//if(fwrite(buf, 1, count, fp) != count) {
+    	//	printf("ERROR: fwrite()\n");
+        //    goto cleanup;
+        //}
     }
 
     rc = 0;
