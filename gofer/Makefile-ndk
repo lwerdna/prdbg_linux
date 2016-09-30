@@ -1,0 +1,12 @@
+CC = $(CCOMPILER)gcc
+
+COMP_SWITCHES = -I$(PATH_ALIB_C)
+LIB_SWITCHES = -L$(PATH_ALIB_C)
+
+all: gofer
+
+gofer: gofer.c
+	$(CC) gofer.c -I$(PATH_ALIB_C) -L$(PATH_ALIB_C) --sysroot=$(NDK_SYSROOT) -o gofer -lalib
+
+clean:
+	rm gofer *.o
